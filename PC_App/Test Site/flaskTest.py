@@ -1,7 +1,5 @@
 from flask import Flask, redirect, url_for, render_template
 
-from flask_googlemaps import GoogleMaps
-from flask_googlemaps import Map
 
 app = Flask(__name__)
 

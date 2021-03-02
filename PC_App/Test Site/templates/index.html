@@ -14,10 +14,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
               <ul class="navbar-nav">
                 <li class="nav-item">
-                  <a class="nav-link" href="/">Home <span class="sr-only"></span></a>
+                  <a class="nav-link" href="/">Coordinate Input <span class="sr-only"></span></a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="/coordinateInput">Coordinate Input</a>
+                  <a class="nav-link" href="/coordinateInput">Drone Checking</a>
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="/controlOverride">Control Override</a>
@@ -27,9 +27,6 @@
             </div>
           </nav>
 
-        {% block content %}
-        {% endblock %}
-
         <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
@@ -38,25 +35,89 @@
      <style>
         *{margin: 0;}
         #map {
-                height: 500px;
-                width: 100%;
-                text-align: center;
+                height: 400px;
+                width:auto;
             }
+        #coordinateInputList
+        {
+          height: 400px;
+          width: 400px;
+        }
     </style>   
 
 
     <div id = "map"></div>
-    
+
+    <form id = 'coordinateInputList'>
+      <div class="col">
+        <label >Coordinate 1: </label>
+        <input class="form-control" id="coor1Lng" aria-describedby="emailHelp" placeholder="Enter longitude">
+        <input class="form-control" id="coor1Lat" aria-describedby="emailHelp" placeholder="Enter latitude">
+      </div>
+      <div class="col">
+        <label >Coordinate 2: </label>
+        <input class="form-control" id="coor2Lng" aria-describedby="emailHelp" placeholder="Enter longitude">
+        <input class="form-control" id="coor2Lat" aria-describedby="emailHelp" placeholder="Enter latitude">
+      </div>
+      <div class="col">
+        <label >Coordinate 3: </label>
+        <input class="form-control" id="coor3Lng" aria-describedby="emailHelp" placeholder="Enter longitude">
+        <input class="form-control" id="coor3Lat" aria-describedby="emailHelp" placeholder="Enter latitude">
+      </div>
+      <div class="col">
+        <label >Coordinate 4: </label>
+        <input class="form-control" id="coor4Lng" aria-describedby="emailHelp" placeholder="Enter longitude">
+        <input class="form-control" id="coor4Lat" aria-describedby="emailHelp" placeholder="Enter latitude">
+      </div>
+      <div class="col">
+        <button type = 'button' onclick = "initMAP()" class="btn btn-primary">Submit</button>
+        <button type = 'clear' class="btn btn-primary">Clear</button>
+      </div>
+
+    </form>
+
     <script>
+        function updateCoordinates()
+        {
+          var map = new google.maps.Map(document.getElementById('map'),
+          {zoom: 4});
+          var location1 = {lat: parseFloat(document.getElementById('coor1Lat').value), lng: parseFloat(document.getElementById('coor1Lng').value)};
+          var marker = new google.maps.Marker({position:location1, map:map});
+        }
+
         function initMAP()
         {
-            var location = {lat: -25.363, lng: 131.044};
-            var location2= {lat: -20.363, lng: 131.044};
+
+          var location1 = {lat: parseFloat(document.getElementById('coor1Lat').value), lng: parseFloat(document.getElementById('coor1Lng').value)};
+          var location2 = {lat: parseFloat(document.getElementById('coor2Lat').value), lng: parseFloat(document.getElementById('coor2Lng').value)};
+          var location3 = {lat: parseFloat(document.getElementById('coor3Lat').value), lng: parseFloat(document.getElementById('coor3Lng').value)};
+          var location4 = {lat: parseFloat(document.getElementById('coor4Lat').value), lng: parseFloat(document.getElementById('coor4Lng').value)};
+
+          if(Number.isNaN(location1.lat) || Number.isNaN(location2.lat) ||Number.isNaN(location3.lat) ||Number.isNaN(location4.lat)||
+          Number.isNaN(location1.lng)||Number.isNaN(location2.lng)||Number.isNaN(location3.lng)||Number.isNaN(location4.lng))
+          {
+            var location = {lat: 28.6024, lng: -81.2001};
             var map = new google.maps.Map(document.getElementById('map'),
-            {zoom: 4,center: location}); 
-            var marker = new google.maps.Marker({position:location, map:map});
-            var marer2 = new google.maps.Marker({position:location2, map:map});
+            {zoom: 15,center: location});
+            return;
+          }
+          else
+          {
+            var middleLat = (location1.lat+location2.lat+location3.lat+location4.lat)/4;
+            var middleLng = (location1.lng + location2.lng +location3.lng + location4.lng)/4;
+            var location = {lat: middleLat, lng: middleLng};
+          }
+
+          var map = new google.maps.Map(document.getElementById('map'),
+          {zoom: 4,center: location}); 
+          var marker = new google.maps.Marker({position:location1, map:map});
+          var marer2 = new google.maps.Marker({position:location2, map:map});
+          var marer3 = new google.maps.Marker({position:location3, map:map});
+          var marer4 = new google.maps.Marker({position:location4, map:map});
+
+
         }
+
     </script>
     <script async defer src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyAB7MbKvVHLspmx_69G-eTAUtCHwJqJlgY&callback=initMAP"></script>
     
