@@ -35,7 +35,7 @@
      <style>
         *{margin: 0;}
         #map {
-                height: 400px;
+                height: 445px;
                 width:auto;
             }
         #coordinateInputList
@@ -109,7 +109,7 @@
           }
 
           var map = new google.maps.Map(document.getElementById('map'),
-          {zoom: 4,center: location}); 
+          {zoom: 15,center: location}); 
           var marker = new google.maps.Marker({position:location1, map:map});
           var marer2 = new google.maps.Marker({position:location2, map:map});
           var marer3 = new google.maps.Marker({position:location3, map:map});
