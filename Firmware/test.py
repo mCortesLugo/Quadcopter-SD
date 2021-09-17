@@ -1,16 +1,7 @@
-import dronekit_sitl
+import argparse
 from dronekit import connect, VehicleMode
 from time import sleep
 
-# Setup SITL
-sitl = dronekit_sitl.start_default()
-connection_string = sitl.connection_string()
-
-print("******************************INITIALIZING******************************")
-
-# Connect to SITL(virtual drone)
-print("Connecting to drone on: {}" .format(connection_string))
-vehicle = connect(connection_string, wait_ready = True)
 
 def arm_n_takeoff(altitude):
     while not vehicle.is_armable:
@@ -42,6 +33,24 @@ def arm_n_takeoff(altitude):
     print("\nReached target height!")
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", "--connect", help = "Enter drone connection string. If connecting through TCP type tcp:STRING_HERE; No need in UDP")
+args = parser.parse_args()
+
+# If no drone connection string is passed SITL will run by default.
+if args.connect == None:
+    # Setup SITL
+    import dronekit_sitl
+    sitl = dronekit_sitl.start_default()
+    connection_string = sitl.connection_string()
+else:
+    connection_string = args.connect
+
+print("******************************INITIALIZING******************************")
+
+# Connect to drone.
+print("Connecting to drone on: {}" .format(connection_string))
+vehicle = connect(connection_string, wait_ready = True)
 
 
 arm_n_takeoff(20)
@@ -60,5 +69,9 @@ while vehicle.location.global_relative_frame > 1:
 print("\nDrone landing!")
 
 vehicle.close()
-sitl.stop()
+
+# If sitl not used then no need to stop sitl
+if args.connect == None:
+    print("I'M HERE!!!\n")
+    sitl.stop()
 print("******************************END******************************")
