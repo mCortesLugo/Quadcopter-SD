@@ -1,17 +1,30 @@
+import math
 import argparse
 from time import sleep
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 
+# Telemetry variables used in UI
+batteryPercent = 0.0
+voltage = 0.0
+current = 0.0
+position = tuple()
+height = 0.0
+velocity = 0.0
+gps = None
+# These flag variables are for testing the code without Lisa's part.
+# The coordinates are an example.
 submitConnect = True
 submitCoordinates = True
 Retreat = False
 emergencyLand = False
-stopDrone = True
+stopDrone = False
 personFound = False
 altitude = 10
-coordinates = [(-35.3628497594051, 149.16418930153807), \
-                (-35.36235104205013, 149.16466137033032), \
-                (-35.36348846309731, 149.16625996692213)]
+coordinates = [(-35.36386175056098, 149.1647898908397), \
+                (-35.36203233417043, 149.16445339580716), \
+                (-35.361818899557925, 149.16618073697418), \
+                    (-35.36366051678722, 149.16665183001973)]
+
 
 # ---------------------Functions-----------------------------------------
 def arm_n_takeoff(altitude):
@@ -19,8 +32,12 @@ def arm_n_takeoff(altitude):
     # Wait for drone to be armable
     while not vehicle.is_armable:
         print("Drone is not armable...")
+        telemetry()
         sleep(1)  
     print("\nDrone is now armable!")
+
+    # Update telemetry.
+    telemetry()
 
     # Drone must be set to GUIDED mode for cmds to work.
     vehicle.mode = VehicleMode("GUIDED")
@@ -28,47 +45,68 @@ def arm_n_takeoff(altitude):
     # Wait for the mode to change to GUIDED
     while not vehicle.mode.name == 'GUIDED':
         print("Changing mode to GUIDED...")
+        telemetry()
         sleep(1)
-    print("\nIn GUIDED mode!")
+    print("\nIn GUIDED mode!\n")
+
+    # Update telemetry.
+    telemetry()
 
     # Arm drone and wait for it to occur.
     vehicle.armed = True
     while vehicle.armed != True:
         print("Arming drone...")
+        telemetry()
         sleep(1)
-    print("\nDrone is armed!")
+    print("\nDrone armed!")
+
+    # Update telemetry.
+    telemetry()
 
     # Takeoff!
     vehicle.simple_takeoff(altitude)
-    print("Taking off.")
+    print("\nTaking off.\n")
 
     # Wait until 95% of altitude is reached
     while vehicle.location.global_relative_frame.alt < (altitude * .95):
         print("Height: {}m" .format(vehicle.location.global_relative_frame.alt))
+        telemetry()
         sleep(1)
     print("\nReached target height!")
+
+    return
+
 
 # This function will land the vehicle at launch location or current location.
 # This will be called when script is done; retreat is pressed in UI; or
 # the emergency land button is pressed.
 # If the emergencyLand = 0 then and RTL cmd is executed; else a land is.
 def land():
+    
     global vehicle, args, emergencyLand
+
+    # Update telemetry.
+    telemetry()
 
     if not emergencyLand:
         # Return to Launch
-        print("Returning to launch.")
+        print("\nReturning to launch.\n")
         vehicle.mode = VehicleMode("RTL")
+        while not vehicle.mode.name == "RTL":
+            print("Changing to RTL mode...")
+            sleep(1)
+        print("\nDrone Switched to RTL mode!")
+
     else:
         # Land drone
         vehicle.mode = "LAND"
         while not vehicle.mode.name == "LAND":
             print("Changing to LAND mode...")
             sleep(1)
-        print("Drone Switched to LAND mode!")
-        print("Landing.")
+        print("\nDrone Switched to LAND mode!")
+        print("Landing...")
 
-    print("Close vehicle object.")
+    print("Closing vehicle object.")
     vehicle.close()
 
     # If sitl used close it
@@ -80,26 +118,37 @@ def land():
     # End program execution.
     exit()
 
+
 # Drone loiters when loiter button pressed. When toggled again
 # drone will continue mission.
 def loiter():
+    
     global stopDrone
+
+    # Update telemetry.
+    telemetry()
 
     # Change to Loiter mode.
     vehicle.mode = VehicleMode("LOITER")   
     while not vehicle.mode.name == "LOITER":
         print("Changing to LOITER mode...")
         sleep(1)
-    print("Drone in LOITER mode.")  
+    print("\nDrone in LOITER mode.")  
+
+    # Update telemetry.
+    telemetry()
 
     # Wait for user to exit loiter mode
     while stopDrone:
         sleep(1)
-        print("Loitering. toggle loiter button to continue mission")
-        sleep(10)
-        stopDrone = False
-    print("Continueing mission.")
+        print("Loitering. Toggle loiter button to continue mission")
+        sleep(3)
+        #stopDrone = False
+    print("\nContinuing mission.\n")
     
+    # Update telemetry.
+    telemetry()
+
     # Drone must be set to GUIDED mode for cmds to work.
     vehicle.mode = VehicleMode("GUIDED")
 
@@ -108,41 +157,142 @@ def loiter():
         print("Changing mode to GUIDED...")
         sleep(1)
     print("\nIn GUIDED mode!")
+
+    # Udpate telemetry.
+    telemetry()
     
     return
 
-def search(coordinates):
-    arm_n_takeoff(altitude)
 
-    # Execute every move to cmd until no more coordinates.
+# Returns the ground distance in metres between two LocationGlobal objects.
+# This method is an approximation, and will not be accurate over large distances and close to the 
+# earth's poles. It comes from the ArduPilot test code: 
+# https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
+def get_distance_meters(aLocation1, aLocation2):
+
+    dlat = aLocation2.lat - aLocation1.lat
+    dlong = aLocation2.lon - aLocation1.lon
+    return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
+
+
+# This function will iterate through the list of tuples... [(lat, lon), ...]
+# It will cmd the drone to move to the location while checking if the user
+# has pressed the retreat, emergency land, or stop drone buttons.
+# If the CV algorithm finds a person then the drone will send its location.
+# If battery 10% or less, RTL.
+def search(coordinates):
+
+    global batteryPercent, personFound, emergencyLand, velocity
+
+    arm_n_takeoff(altitude = 3.05)  # 3.05m == 10ft
+    vehicle.airspeed = 20           # Set drone speed in m/s
+    index = 1                       # Used for printing current waypoint #.
+
+    # Execute until no more coordinates.
     for x in coordinates:
+
+        # Create LocationGlobalRelative variable of current waypoint to then pass to simple_goto()
         destination = LocationGlobalRelative(x[0], x[1], altitude)
 
-        # Tells drone to move to location
+        # Get distance between current location and destination. Used to detect arrival to waypoint.
+        distance = get_distance_meters(vehicle.location.global_frame, destination)
+        
+        # Update telemtry
+        telemetry()
+
+        print("\nHeading to waypoint {}: {}\n" .format(index, x))
+
+        # Tells drone to move to destination.
         vehicle.simple_goto(destination)
 
-        sleep(15)   # temporary until I find how to measure distance to target.
+        # Keep moving to destination as long as battery ok and no UI interaction occurs.
+        while distance > 1.2 and not Retreat and not emergencyLand and not stopDrone and batteryPercent > 15:
+            if personFound:
+                print("\nFOUND PERSON AT: ({0:.2f}, {0:.2f})" .format(vehicle.location.global_frame.lat, \
+                                                                vehicle.location.global_frame.lon))
+                personFound = False                                  
+            print("Remaining distance: {0:.2f}m | Speed: {1:.2f}mph" .format(distance, velocity))
+            telemetry()
+            sleep(1)
+            distance = get_distance_meters(vehicle.location.global_frame, destination)
+            #sleep(3)
+            #personFound = True
 
-        '''while NotReached or Retreat or emergencyLand or stopDrone:
-                NOP'''
+        #sleep(30)   # temporary until I find how to measure distance to target.
+        #print("Exiting loop\n"
+        #"Retreat: {} | emergencyLand: {} | stopDrone: {}"
+        #.format(Retreat, emergencyLand, stopDrone))
+
+
         # If user presses Retreat button exit and RTL
         if Retreat:
-            print("RETREAAAAT!")
+            print("\n-------------------------------------"
+            "\nRETREAAAAT!"
+            "\n-------------------------------------")
             land()
 
         # If user presses emergency land button, drone lands.
         # Vehicle object closed and script exits.
         if emergencyLand:
-            print("EMERGENCY LAND!")
+            print("\n-------------------------------------"
+            "\nEMERGENCY LAND!"
+            "\n-------------------------------------")
             land()
+        
+        # If battery low, RTL.
+        if batteryPercent <= 15:
+            print("\n-------------------------------------"
+            "\nBATTERY LOW! END OF MISSION."
+            "\n-------------------------------------")
+            #emergencyLand = True
+            land()
+            
 
         # If StopDrone button is pressed drone will loiter until
         # commanded to continue.    
         if stopDrone:
-            print("Mission Paused.")
+            print("\n-------------------------------------"
+            "\nMISSION PAUSED."
+            "\n-------------------------------------\n")
             loiter()
+            print("Moving to wp:")
+        index += 1
+
+
+# This is the listener function. It will periodically provide telemetry data.
+def Listener(self, attr_name, value):
+    sleep(30)
+    print("\n+++++++++++++++++++++++++++++++++++++"
+    "\nLISTENER: ({}): {}."
+    "\n+++++++++++++++++++++++++++++++++++++" .format(attr_name, value))
+
+
+# This function updates the telemetry data and prints it on the terminal.
+def telemetry():
+    # These variables are declared at the top of the script. Will be used for
+    # the user interface to output telemetry.
+    global batteryPercent, voltage, current, position, height, velocity, gps
+    
+    voltage =           vehicle.battery.voltage
+    current =           vehicle.battery.current
+    batteryPercent =    vehicle.battery.level
+    gps =               vehicle.gps_0
+    position =          (vehicle.location.global_frame.lat, vehicle.location.global_frame.lon)
+    height =            vehicle.location.global_relative_frame.alt
+    velocity =          vehicle.airspeed / 0.44704
+    
+    '''
+    print("\n*************************************")
+    print("{}" .format(vehicle.battery))
+    print("{}" .format(gps))
+    print("Drone position: {}" .format(position))
+    print("Drone altitude: {}m" .format(height))
+    print("Speed: {}mph" .format(velocity))
+    print("*************************************\n")
+    '''
 
 # -----------------------------------------------------------------------
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--connect", help = "Enter drone connection string. If connecting through TCP type tcp:STRING_HERE; No need in UDP")
@@ -164,13 +314,28 @@ while(not submitConnect):
     print("Waiting for drone connection...")
     sleep(1)
 
-print("Connecting to drone on: {}" .format(connection_string))
+print("\nConnecting to drone on: {}\n" .format(connection_string))
 vehicle = connect(connection_string, wait_ready = True)
+
+# Update telemetry
+telemetry()
 
 # Wait for user to enter 4 corner coordinates in user interface
 while(not submitCoordinates):
     print("Waiting for user to enter coordinates...")
     sleep(1)
+print("\nCoordinates received!")
+
+if batteryPercent <= 10:
+    print("Battery low...ending mission")
+    vehicle.close()
+    exit()
+
+#print("\n Adding listener...")
+#vehicle.add_attribute_listener('gps_0', Listener)
+
+# Update telemetry
+telemetry()
 
 # This function takes in the list of coordinates(tuple) and searches the
 # specified area for the rescue target
