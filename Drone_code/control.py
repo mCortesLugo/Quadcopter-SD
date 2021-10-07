@@ -11,14 +11,18 @@ position = tuple()
 height = 0.0
 velocity = 0.0
 gps = None
+
 # These flag variables are for testing the code without Lisa's part.
-# The coordinates are an example.
+# The coordinates are an example. The CV found list will hold the locations
+# of the people found.
 submitConnect = True
 submitCoordinates = True
 Retreat = False
 emergencyLand = False
 stopDrone = False
 personFound = False
+personLocation = []
+numOfRescued = 0
 altitude = 10
 coordinates = [(-35.36386175056098, 149.1647898908397), \
                 (-35.36203233417043, 149.16445339580716), \
@@ -83,7 +87,7 @@ def arm_n_takeoff(altitude):
 # If the emergencyLand = 0 then and RTL cmd is executed; else a land is.
 def land():
     
-    global vehicle, args, emergencyLand
+    global vehicle, args, emergencyLand, numOfRescued
 
     # Update telemetry.
     telemetry()
@@ -114,6 +118,14 @@ def land():
         global sitl
         print("Ending SITL simulator.")
         sitl.stop()
+
+    i = 0
+    print("\n_______MISSION REPORT:______________________________")
+    print("Number of rescued: {}" .format(numOfRescued))
+    for location in personLocation:
+        print("Person {} at: {}" .format(i, location))
+        i += 1
+    print("_______END OF MISSION______________________________")
 
     # End program execution.
     exit()
@@ -182,7 +194,7 @@ def get_distance_meters(aLocation1, aLocation2):
 # If battery 10% or less, RTL.
 def search(coordinates):
 
-    global batteryPercent, personFound, emergencyLand, velocity
+    global batteryPercent, personFound, personLocation, numOfRescued, emergencyLand, velocity
 
     arm_n_takeoff(altitude = 3.05)  # 3.05m == 10ft
     vehicle.airspeed = 20           # Set drone speed in m/s
@@ -207,10 +219,19 @@ def search(coordinates):
 
         # Keep moving to destination as long as battery ok and no UI interaction occurs.
         while distance > 1.2 and not Retreat and not emergencyLand and not stopDrone and batteryPercent > 15:
+            
             if personFound:
-                print("\nFOUND PERSON AT: ({0:.2f}, {0:.2f})" .format(vehicle.location.global_frame.lat, \
-                                                                vehicle.location.global_frame.lon))
-                personFound = False                                  
+                # Store person location
+                personLocation.append( (vehicle.location.global_frame.lat, vehicle.location.global_frame.lon) )
+                
+                print("\nFOUND PERSON AT: ({0:.2f}, {0:.2f})" .format(personLocation[-1][-2], \
+                                                                        personLocation[-1][-1])) # Last appended lat & lon
+                # Lower flag to not trigger again, count person, and sleep for 2 seconds to avoid detecting same person.
+                personFound = False
+                numOfRescued += 1
+                sleep(1)
+
+
             print("Remaining distance: {0:.2f}m | Speed: {1:.2f}mph" .format(distance, velocity))
             telemetry()
             sleep(1)
