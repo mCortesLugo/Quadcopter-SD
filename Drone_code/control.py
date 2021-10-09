@@ -24,10 +24,30 @@ personFound = False
 personLocation = []
 numOfRescued = 0
 altitude = 10
+
+# Used for testing the script w/o search_algorithm(). Do not use if search_algorithm() in use.
 coordinates = [(-35.36386175056098, 149.1647898908397), \
                 (-35.36203233417043, 149.16445339580716), \
                 (-35.361818899557925, 149.16618073697418), \
                     (-35.36366051678722, 149.16665183001973)]
+
+# Test input for search_algorith(). Not a perfect rectangle
+testCoordinates =  [(-35.36165545753266, 149.1603591066628),    \
+                    (-35.36148046674933, 149.1650368792219),    \
+                    (-35.36391280463349, 149.16083117545315),   \
+                    (-35.364227778280814, 149.16424294534718)]
+
+# Test input is rectangle
+test3 = [(-35.3638805824148, 149.16447914421548), \
+                (-35.363915579561386, 149.16236556358444), \
+                (-35.36174572778457, 149.16224754639185), \
+                    (-35.36171072969738, 149.1643503981872)]
+
+# Test input is half of football field (150' x 160')
+test4_ft_ball_field = [(-35.36231539725387, 149.16226176440182), \
+                        (-35.36275491977364, 149.1622723321772), \
+                            (-35.362758366999635, 149.1617650789596), \
+                                (-35.36231712087627, 149.16174605696395)]
 
 
 # ---------------------Functions-----------------------------------------
@@ -51,7 +71,7 @@ def arm_n_takeoff(altitude):
         print("Changing mode to GUIDED...")
         telemetry()
         sleep(1)
-    print("\nIn GUIDED mode!\n")
+    print("In GUIDED mode!\n")
 
     # Update telemetry.
     telemetry()
@@ -62,23 +82,82 @@ def arm_n_takeoff(altitude):
         print("Arming drone...")
         telemetry()
         sleep(1)
-    print("\nDrone armed!")
+    print("Drone armed!")
 
     # Update telemetry.
     telemetry()
 
     # Takeoff!
     vehicle.simple_takeoff(altitude)
-    print("\nTaking off.\n")
+    print("Taking off.\n")
 
     # Wait until 95% of altitude is reached
     while vehicle.location.global_relative_frame.alt < (altitude * .95):
         print("Height: {}m" .format(vehicle.location.global_relative_frame.alt))
         telemetry()
         sleep(1)
-    print("\nReached target height!")
+    print("Reached target height!")
 
     return
+
+
+#equation of the line between 2 gps coordinates
+def search_algorithm(coordinates, altitude):
+
+# turn user inputted coordinates into a code-friendly shape that contains the entire user area
+    coords = [0, 0, 0, 0]
+
+    # lines up longitudes while letting latitudes float
+    coords[0] = (min(coordinates[0][1], coordinates[1][1]), coordinates[0][0])
+    coords[1] = (min(coordinates[0][1], coordinates[1][1]), coordinates[1][0])
+    coords[2] = (max(coordinates[2][1], coordinates[3][1]), coordinates[2][0])
+    coords[3] = (max(coordinates[2][1], coordinates[3][1]), coordinates[3][0])
+
+    slope23 = (coords[2][0] - coords[1][0])/(coords[2][1] - coords[1][1])
+    slope14 = (coords[3][0] - coords[0][0])/(coords[3][1] - coords[0][1])
+
+    int23 = coords[2][0] - slope23 * coords[2][1]
+    int14 = coords[0][0] - slope14 * coords[0][1]
+
+    # divde actual FOV by 1.25 to ensure overlap of flight paths
+    field = altitude * math.tan(60)/1.25
+
+    # number of required passes given the inputted search area
+    # this might be unnecessary depending on later loop code
+
+    #dist12 = math.sqrt((coords[0][0]-coords[1][0])**2 + (coords[0][1] - coords[1][1])**2)
+    dist23 = math.sqrt((coords[1][1]-coords[2][1])**2 + (coords[1][0] - coords[2][0])**2)
+    #dist34 = math.sqrt((coords[2][0]-coords[3][0])**2 + (coords[2][1] - coords[3][1])**2)
+    #dist41 = math.sqrt((coords[3][0]-coords[0][0])**2 + (coords[3][1] - coords[0][1])**2)
+
+    num_passes = dist23/field
+
+    # calculate gps coordinates
+
+    longitudes = [coords[0][1], coords[1][1]]
+    latitudes = [coords[0][0], coords[1][0]]
+
+    # throws error if user inputs a perfect rectangle; will troubleshoot later
+
+    for i in range(2, 100):
+        if i % 2 == 0:
+            longitudes.append(math.sqrt((field**2)/(1+slope23**2)) + longitudes[i-1])
+            latitudes.append(math.sqrt((field**2)/(1/(slope23**2)+1)) + latitudes[i-1])
+        else:
+            longitudes.append(math.sqrt((field**2)/(1+slope23**2)) + longitudes[i-3])
+            latitudes.append(math.sqrt((field**2)/(1/(slope23**2)+1)) + latitudes[i-3])
+        
+        # check to see if current lat/long is outside of the far side boundary
+        if longitudes[i] > coords[2][1]:
+            break
+
+    # write calculated latitudes/longitudes to array of tuples
+
+    waypoints = []
+    for i in range(0, len(longitudes)):
+        waypoints.append((longitudes[i], latitudes[i]))
+
+    return waypoints
 
 
 # This function will land the vehicle at launch location or current location.
@@ -125,7 +204,7 @@ def land():
     for location in personLocation:
         print("Person {} at: {}" .format(i, location))
         i += 1
-    print("_______END OF MISSION______________________________")
+    print("_______END OF MISSION______________________________\n")
 
     # End program execution.
     exit()
@@ -194,17 +273,24 @@ def get_distance_meters(aLocation1, aLocation2):
 # If battery 10% or less, RTL.
 def search(coordinates):
 
-    global batteryPercent, personFound, personLocation, numOfRescued, emergencyLand, velocity
-
+    global batteryPercent, personFound, personLocation, numOfRescued, emergencyLand, velocity,\
+            testCoordinates, stopDrone, Retreat
+    '''
+    # Get mission coordinates.
+    print("BEFORE - coordinates: {}" .format(coordinates))
+    coordinates = search_algorithm(coordinates, altitude = 3.05)
+    print("AFTER - coordinates: {}" .format(coordinates))
+    '''
     arm_n_takeoff(altitude = 3.05)  # 3.05m == 10ft
+
     vehicle.airspeed = 20           # Set drone speed in m/s
     index = 1                       # Used for printing current waypoint #.
 
     # Execute until no more coordinates.
-    for x in coordinates:
+    for wp in coordinates:
 
         # Create LocationGlobalRelative variable of current waypoint to then pass to simple_goto()
-        destination = LocationGlobalRelative(x[0], x[1], altitude)
+        destination = LocationGlobalRelative(wp[0], wp[1], altitude)
 
         # Get distance between current location and destination. Used to detect arrival to waypoint.
         distance = get_distance_meters(vehicle.location.global_frame, destination)
@@ -212,19 +298,27 @@ def search(coordinates):
         # Update telemtry
         telemetry()
 
-        print("\nHeading to waypoint {}: {}\n" .format(index, x))
+        print("\nHeading to waypoint {}: {}\n" .format(index, wp))
 
         # Tells drone to move to destination.
         vehicle.simple_goto(destination)
 
         # Keep moving to destination as long as battery ok and no UI interaction occurs.
-        while distance > 1.2 and not Retreat and not emergencyLand and not stopDrone and batteryPercent > 15:
+        while distance > 1.2 and not Retreat and not emergencyLand and not stopDrone and batteryPercent > 20:
             
+            # If drone randomly changes to RTL go back to GUIDED.
+            if vehicle.mode.name == 'RTL':
+                vehicle.mode = VehicleMode("GUIDED")
+                while not vehicle.mode.name == "GUIDED":
+                    print("FIXING RANDOM RTL...")
+                print("FIXED: IN GUIDED AGAIN...")
+                vehicle.simple_goto(destination)
+
             if personFound:
                 # Store person location
                 personLocation.append( (vehicle.location.global_frame.lat, vehicle.location.global_frame.lon) )
                 
-                print("\nFOUND PERSON AT: ({0:.2f}, {0:.2f})" .format(personLocation[-1][-2], \
+                print("\nFOUND PERSON AT: ({0:.4f}, {1:.4f})" .format(personLocation[-1][-2], \
                                                                         personLocation[-1][-1])) # Last appended lat & lon
                 # Lower flag to not trigger again, count person, and sleep for 2 seconds to avoid detecting same person.
                 personFound = False
@@ -236,14 +330,18 @@ def search(coordinates):
             telemetry()
             sleep(1)
             distance = get_distance_meters(vehicle.location.global_frame, destination)
+
+            #sleep(4)
+            #stopDrone = True
+            '''Uncomment next two lines to test Retreat.'''
+            #sleep(4)
+            #Retreat = True
+            '''Uncomment next two lines to test emergencyLand.'''
+            #sleep(4)
+            #emergencyLand = True
+            '''Uncomment next two lines to test finding people.'''
             #sleep(3)
             #personFound = True
-
-        #sleep(30)   # temporary until I find how to measure distance to target.
-        #print("Exiting loop\n"
-        #"Retreat: {} | emergencyLand: {} | stopDrone: {}"
-        #.format(Retreat, emergencyLand, stopDrone))
-
 
         # If user presses Retreat button exit and RTL
         if Retreat:
@@ -261,7 +359,7 @@ def search(coordinates):
             land()
         
         # If battery low, RTL.
-        if batteryPercent <= 15:
+        if batteryPercent <= 20:
             print("\n-------------------------------------"
             "\nBATTERY LOW! END OF MISSION."
             "\n-------------------------------------")
@@ -275,17 +373,13 @@ def search(coordinates):
             print("\n-------------------------------------"
             "\nMISSION PAUSED."
             "\n-------------------------------------\n")
+            #temp = LocationGlobalRelative(position[0], position[1], altitude)
+            #vehicle.simple_goto(temp)
+            #sleep(20)
             loiter()
-            print("Moving to wp:")
+            print("Continuing to wp {}:" .format(index))
+            stopDrone = False
         index += 1
-
-
-# This is the listener function. It will periodically provide telemetry data.
-def Listener(self, attr_name, value):
-    sleep(30)
-    print("\n+++++++++++++++++++++++++++++++++++++"
-    "\nLISTENER: ({}): {}."
-    "\n+++++++++++++++++++++++++++++++++++++" .format(attr_name, value))
 
 
 # This function updates the telemetry data and prints it on the terminal.
@@ -314,7 +408,7 @@ def telemetry():
 
 # -----------------------------------------------------------------------
 
-
+# Add -c positional argument to specify connection string as cmd ln arg.
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--connect", help = "Enter drone connection string. If connecting through TCP type tcp:STRING_HERE; No need in UDP")
 args = parser.parse_args()
@@ -345,15 +439,12 @@ telemetry()
 while(not submitCoordinates):
     print("Waiting for user to enter coordinates...")
     sleep(1)
-print("\nCoordinates received!")
+print("Coordinates received!")
 
 if batteryPercent <= 10:
     print("Battery low...ending mission")
     vehicle.close()
     exit()
-
-#print("\n Adding listener...")
-#vehicle.add_attribute_listener('gps_0', Listener)
 
 # Update telemetry
 telemetry()
@@ -362,4 +453,5 @@ telemetry()
 # specified area for the rescue target
 search(coordinates)
 
+# Mission ends.
 land()
