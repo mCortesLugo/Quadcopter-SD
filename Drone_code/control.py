@@ -104,58 +104,35 @@ def arm_n_takeoff(altitude):
 #equation of the line between 2 gps coordinates
 def search_algorithm(coordinates, altitude):
 
-# turn user inputted coordinates into a code-friendly shape that contains the entire user area
+    # initialize coords lilst
     coords = [0, 0, 0, 0]
 
-    # lines up longitudes while letting latitudes float
-    coords[0] = (min(coordinates[0][1], coordinates[1][1]), coordinates[0][0])
-    coords[1] = (min(coordinates[0][1], coordinates[1][1]), coordinates[1][0])
-    coords[2] = (max(coordinates[2][1], coordinates[3][1]), coordinates[2][0])
-    coords[3] = (max(coordinates[2][1], coordinates[3][1]), coordinates[3][0])
+    # coordinates are in (lat,long); coords is a list of the corners of a perfect rectangle that contains the user-inputted search area
 
-    slope23 = (coords[2][0] - coords[1][0])/(coords[2][1] - coords[1][1])
-    slope14 = (coords[3][0] - coords[0][0])/(coords[3][1] - coords[0][1])
+    coords[0] = (min(coordinates[0][0], coordinates[3][0]), min(coordinates[0][1], coordinates[1][1]))
+    coords[1] = (max(coordinates[1][0], coordinates[2][0]), min(coordinates[0][1], coordinates[1][1]))
+    coords[2] = (max(coordinates[1][0], coordinates[2][0]), max(coordinates[2][1], coordinates[3][1]))
+    coords[3] = (min(coordinates[0][0], coordinates[3][0]), max(coordinates[2][1], coordinates[3][1]))
 
-    int23 = coords[2][0] - slope23 * coords[2][1]
-    int14 = coords[0][0] - slope14 * coords[0][1]
-
-    # divde actual FOV by 1.25 to ensure overlap of flight paths
-    field = altitude * math.tan(60)/1.25
-
-    # number of required passes given the inputted search area
-    # this might be unnecessary depending on later loop code
-
-    #dist12 = math.sqrt((coords[0][0]-coords[1][0])**2 + (coords[0][1] - coords[1][1])**2)
-    dist23 = math.sqrt((coords[1][1]-coords[2][1])**2 + (coords[1][0] - coords[2][0])**2)
-    #dist34 = math.sqrt((coords[2][0]-coords[3][0])**2 + (coords[2][1] - coords[3][1])**2)
-    #dist41 = math.sqrt((coords[3][0]-coords[0][0])**2 + (coords[3][1] - coords[0][1])**2)
-
-    num_passes = dist23/field
-
-    # calculate gps coordinates
 
     longitudes = [coords[0][1], coords[1][1]]
     latitudes = [coords[0][0], coords[1][0]]
 
-    # throws error if user inputs a perfect rectangle; will troubleshoot later
+    # interval for search passes: .00003 degrees (approximately 10 ft)
 
-    for i in range(2, 100):
-        if i % 2 == 0:
-            longitudes.append(math.sqrt((field**2)/(1+slope23**2)) + longitudes[i-1])
-            latitudes.append(math.sqrt((field**2)/(1/(slope23**2)+1)) + latitudes[i-1])
+    for i in range(2,10):
+        if i%2 == 0:
+            latitudes.append(latitudes[i-1])
+            longitudes.append(longitudes[i-1] + .00003)
         else:
-            longitudes.append(math.sqrt((field**2)/(1+slope23**2)) + longitudes[i-3])
-            latitudes.append(math.sqrt((field**2)/(1/(slope23**2)+1)) + latitudes[i-3])
-        
-        # check to see if current lat/long is outside of the far side boundary
-        if longitudes[i] > coords[2][1]:
-            break
+            latitudes.append(latitudes[i-3])
+            longitudes.append(longitudes[i-3] + .00003)
 
-    # write calculated latitudes/longitudes to array of tuples
+    # write calculated latitudes/longitudes to list of tuples
 
     waypoints = []
     for i in range(0, len(longitudes)):
-        waypoints.append((longitudes[i], latitudes[i]))
+        waypoints.append((latitudes[i], longitudes[i]))
 
     return waypoints
 
@@ -269,24 +246,24 @@ def get_distance_meters(aLocation1, aLocation2):
 # This function will iterate through the list of tuples... [(lat, lon), ...]
 # It will cmd the drone to move to the location while checking if the user
 # has pressed the retreat, emergency land, or stop drone buttons.
-# If the CV algorithm finds a person then the drone will send its location.
-# If battery 10% or less, RTL.
+# If the CV algorithm finds a person then the drone will print & store its location.
+# If battery 20% or less, RTL.
 def search(coordinates):
 
     global batteryPercent, personFound, personLocation, numOfRescued, emergencyLand, velocity,\
             testCoordinates, stopDrone, Retreat
-    '''
+    
     # Get mission coordinates.
     print("BEFORE - coordinates: {}" .format(coordinates))
     coordinates = search_algorithm(coordinates, altitude = 3.05)
     print("AFTER - coordinates: {}" .format(coordinates))
-    '''
+    
     arm_n_takeoff(altitude = 3.05)  # 3.05m == 10ft
 
-    vehicle.airspeed = 20           # Set drone speed in m/s
+    vehicle.airspeed = 20           # Set drone speed in m/s.
     index = 1                       # Used for printing current waypoint #.
 
-    # Execute until no more coordinates.
+    # Execute until no more coordinates. This loop controls what the drone does if special case arises.
     for wp in coordinates:
 
         # Create LocationGlobalRelative variable of current waypoint to then pass to simple_goto()
@@ -323,14 +300,17 @@ def search(coordinates):
                 # Lower flag to not trigger again, count person, and sleep for 2 seconds to avoid detecting same person.
                 personFound = False
                 numOfRescued += 1
-                sleep(1)
+                sleep(2)
 
 
             print("Remaining distance: {0:.2f}m | Speed: {1:.2f}mph" .format(distance, velocity))
             telemetry()
-            sleep(1)
             distance = get_distance_meters(vehicle.location.global_frame, destination)
 
+            # Used to slow down the amount output printed.
+            sleep(1)
+
+            '''NOTE: NOT WORKING - Uncomment next two lines to test Retreat.'''
             #sleep(4)
             #stopDrone = True
             '''Uncomment next two lines to test Retreat.'''
@@ -368,7 +348,7 @@ def search(coordinates):
             
 
         # If StopDrone button is pressed drone will loiter until
-        # commanded to continue.    
+        # commanded to continue.
         if stopDrone:
             print("\n-------------------------------------"
             "\nMISSION PAUSED."
@@ -451,7 +431,7 @@ telemetry()
 
 # This function takes in the list of coordinates(tuple) and searches the
 # specified area for the rescue target
-search(coordinates)
+search(test4_ft_ball_field)
 
 # Mission ends.
 land()
