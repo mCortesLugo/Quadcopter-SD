@@ -49,6 +49,8 @@ test4_ft_ball_field = [(-35.36231539725387, 149.16226176440182), \
                             (-35.362758366999635, 149.1617650789596), \
                                 (-35.36231712087627, 149.16174605696395)]
 
+test_ft_ball_field_cw = [(-35.362758366999635, 149.1617650789596), (-35.36231712087627, 149.16174605696395), (-35.36231539725387, 149.16226176440182), (-35.36275491977364, 149.1622723321772) ]
+
 
 # ---------------------Functions-----------------------------------------
 def arm_n_takeoff(altitude):
@@ -120,7 +122,9 @@ def search_algorithm(coordinates, altitude):
 
     # interval for search passes: .00003 degrees (approximately 10 ft)
 
-    for i in range(2,10):
+    num_passes = (coords[1][1] - coords[2][1]) / .00003
+
+    for i in range(2, max(num_passes, 10)):
         if i%2 == 0:
             latitudes.append(latitudes[i-1])
             longitudes.append(longitudes[i-1] + .00003)
@@ -281,7 +285,7 @@ def search(coordinates):
         vehicle.simple_goto(destination)
 
         # Keep moving to destination as long as battery ok and no UI interaction occurs.
-        while distance > 1.2 and not Retreat and not emergencyLand and not stopDrone and batteryPercent > 20:
+        while distance > 1.43 and not Retreat and not emergencyLand and not stopDrone and batteryPercent > 20:
             
             # If drone randomly changes to RTL go back to GUIDED.
             if vehicle.mode.name == 'RTL':
@@ -410,7 +414,7 @@ while(not submitConnect):
     sleep(1)
 
 print("\nConnecting to drone on: {}\n" .format(connection_string))
-vehicle = connect(connection_string, wait_ready = True)
+vehicle = connect(connection_string, wait_ready = True, timeout = 90)
 
 # Update telemetry
 telemetry()
@@ -431,7 +435,7 @@ telemetry()
 
 # This function takes in the list of coordinates(tuple) and searches the
 # specified area for the rescue target
-search(test4_ft_ball_field)
+search(coordinates)
 
 # Mission ends.
 land()

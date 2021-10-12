@@ -53,7 +53,7 @@ print("******************************INITIALIZING******************************"
 print("Connecting to drone on: {}" .format(connection_string))
 vehicle = connect(connection_string, wait_ready = True)
 
-arm_n_takeoff(20)
+arm_n_takeoff(5)
 
 
 # Land drone
