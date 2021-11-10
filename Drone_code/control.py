@@ -287,16 +287,16 @@ def search(coordinates):
     global batteryPercent, personFound, personLocation, numOfRescued, emergencyLand, velocity,\
             testCoordinates, stopDrone, Retreat
     
-    altitude = 3.05   # 3.05ft == 10ft
+    altitude = 3.05   # 3.05m == 10ft
     
     # Get mission coordinates.
-    print("BEFORE - coordinates: {}" .format(coordinates))
+    print("INPUT - coordinates: {}" .format(coordinates))
     coordinates = search_algorithm(coordinates, altitude)
-    print("AFTER - coordinates: {}" .format(coordinates))
+    print("OUTPUT - coordinates: {}" .format(coordinates))
     
     arm_n_takeoff(altitude)
 
-    vehicle.airspeed = 20           # Set drone speed in m/s. 6m/s = 13.4mph
+    vehicle.airspeed = 20           # Set drone speed in m/s. 6m/s = 13.4mph.
     index = 1                       # Used for printing current waypoint #.
 
     # Execute until no more coordinates. This loop controls what the drone does if special case arises.
@@ -330,6 +330,10 @@ def search(coordinates):
                 print("Getting un-stuck.") 
                 vehicle.simple_goto(destination)    # Resend goto cmd to finish heading to wp.
                 count = 1                           # Reset count variable to detect if stuck again.
+                init_distance = distance            # Update the ini_distance var so that it does not contain starting distance
+            else:
+                init_distance = distance            # Update the ini_distance var so that it does not contain starting distance
+
 
             # If drone randomly changes to RTL go back to GUIDED.
             if vehicle.mode.name == 'RTL':
@@ -388,6 +392,8 @@ def search(coordinates):
             "\nRETREAAAAT!"
             "\n-------------------------------------")
             land()
+            Retreat = False # Change to false in case of multiple runs.
+
 
         # If user presses emergency land button, drone lands.
         # Vehicle object closed and script exits.
@@ -396,6 +402,8 @@ def search(coordinates):
             "\nEMERGENCY LAND!"
             "\n-------------------------------------")
             land()
+            emergencyLand = False # Change to false so that in subsequent run it does not land immediatly
+
         
         # If battery low, RTL.
         if batteryPercent <= 20:
@@ -419,6 +427,10 @@ def search(coordinates):
             print("Continuing to wp {}:" .format(index))
             stopDrone = False
         index += 1
+
+    # Mission ends.
+    land()
+
 
 
 # This function updates the telemetry data and prints it on the terminal.
@@ -492,5 +504,3 @@ telemetry()
 # specified area for the rescue target
 search(test_ft_ball_field_cw)
 
-# Mission ends.
-land()
