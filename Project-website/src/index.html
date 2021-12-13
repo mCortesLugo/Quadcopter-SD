@@ -1,0 +1,155 @@
+<!--Author: Moises David Cortes Lugo (CPE)
+    Date: 12/12/21
+    Senior Design II team website
+    CS group #40 - SAR Drone (Multidisciplinary team)
+    Team Members:
+                  - Christian Lozano      (CS)
+                  - Joseph Manalo         (CS)
+                  - Joshua Mutugi         (CS)
+                  - Lisa Harrison	        (ME; minor in CS)
+                  - Nicolas Norman        (ME)
+                  - Moises D. Cortes Lugo (CPE)
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;1,700;1,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+
+  <title>Document</title>
+</head>
+<body>
+  <div id="title">
+    <h1>UCF Senior Design Group #40: Search And Rescue Drone</h1>
+    <hr>
+  </div>
+
+  <div id="intro" class="row">
+    <div class="column" >
+      <h2>What it does.</h2>
+      <p>
+        Our project aims to reduce the human manpower and exposure necessary for SAR by automating the process of human detection and location, which is half the battle in SAR. To this end, we built an autonomous quadcopter that flies within a search area of 22,000 ft2 at the height of 17 ft above the ground, and can, with real-time camera footage, locate a human that is standing, sitting, or lying down, and report that human’s location. The drone can be monitored and controlled through a computer's local web app (built on FLASK).
+      </p>
+    </div>
+    <div class="column">
+      <iframe width="763" height="432" style="align-items: center;" src="https://www.youtube.com/embed/u7BEt3lQTZY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      <iframe width="763" height="432" src="https://www.youtube.com/embed/f2u09l1iRng" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    <hr noshade="True" color="black"> 
+  </div>
+
+  <div id="diagram">
+    <img class="floatLeft" src="./assets/New_comm_diagram.png" height = "407" width="624" alt="Drone automation diagram">
+    <p class="floatRight">
+      <h2>Automation System Diagram</h2>
+      Communication between the drone and the GCS(Ground Control Station) is achieved through RF. A USB RF transmitter is used to send commands on the GCS side, and the drone has an RF receiver attached to the flight controller. To initiate communication, MavProxy must be started. Mavproxy will connect to COM5, which is the serial connection port to the RF transmitter (This will vary for each computer). Next, the user must open UDP port 14550. This port enables the communication between the flight controller, the automation script, and the user interface. The UI will prompt the user for the UDP port and start the automation script.
+    </p>
+  </div>
+
+  <div id="cvMap">
+    <img class="floatRight" src="./assets/Computer-vision-diagram.png" alt="Computer vision system diagram">
+    <p class="floatLeft" >
+      <h2>Computer Vision System Map</h2>
+      The detection model used is Tiny YOLOv4(You Only Look Once version 4). The drone has a camera and a video transmitter. The Transmitters send the video signal to the computer running the automation program. The computer vision model will raise a flag if it detects a person with 80% confidence. When the flag is raised, the drone returns the location of the person found along with an image, and the drone will return to launch.
+    </p>
+    <div></div>
+    <hr noshade="True" color="black">
+  </div>
+
+  <div id="images">
+    <h2>Development tools used</h2>
+    <img class="images" src="./assets/creo.jpeg" alt="Creo cad software logo">
+    <img class="images" style="background-color: white;" src="./assets/FLASK.png" alt="FLASK logo">
+    <img class="images" src="./assets/openCV.png" alt="openCV logo">
+    <img class="images" src="./assets/dronekit.png" alt="dronekit image">
+    <img class="images" src="./assets/missionPlanner.png" atl="Mission Planner image">
+    <hr noshade="True" color="black">
+  </div>
+
+  <div id="team">
+    <h2>The Team</h2>
+
+    <table style="width:100%">
+      <tr>
+        <th>Team Member</th>
+        <th>Degree</th>
+        <th>Tasks</th>
+        <th>Email</th>
+      </tr>
+      <tr class="spaceUnder">
+        <td>Christian Lozano</td>
+        <td>CS</td>
+        <td>
+          FLASK Developer<br>
+          Backend<br>
+          Frontend<br>
+        </td>
+        <td>christianlozano@knights.ucf.edu</td>
+      </tr>
+      <tr class="spaceUnder">
+        <td>Joseph Manalo</td>
+        <td>CS</td>
+        <td>
+          Drone SME (Subject Matter Expert)<br>
+          Drone Component Selection<br>
+          Lead Tester and Builder<br>
+        </td>
+        <td>joseph70590@gmail.com</td>
+      </tr>
+      <tr class="spaceUnder">
+        <td>Joshua Mutugi</td>
+        <td>CS</td>
+        <td>
+            CV Model Selection<br>
+            CV Model Integration<br>
+        </td>
+        <td>jbmutugi@knights.ucf.edu</td>
+      </tr>
+      <tr class="spaceUnder">
+        <td>Lisa Harrison</td>
+        <td>ME (CS minor)</td>
+        <td>
+          Search Algorithm & Pattern<br>
+        </td>
+        <td>harrisol@knights.ucf.edu</td>
+      </tr>
+      <tr class="spaceUnder">
+        <td>Nicolas Norman</td>
+        <td>ME</td>
+        <td>
+          Project Manager<br>
+          Drone Frame design<br>
+          Mounting hardware design<br>
+          Manufacturing<br>
+        </td>
+        <td>nick.norman@knights.ucf.edu</td>
+      </tr>
+      <tr class="spaceUnder">
+        <td>Moises D. Cortes Lugo</td>
+        <td>CPE</td>
+        <td>
+          Backend Automation Programmer<br>
+          Flight Controller Selection<br>
+        </td>
+        <td>modcode19@gmail.com
+        </td>
+      </tr>
+    </table>
+</div>
+
+<div id="docs">
+  <h2>A few documents...</h2>
+  <a href="./assets/files/Final_Design_Document_SD-I.pdf">Senior Design I Final Design Document</a><br>
+  <a href="./assets/files/SD2_Final_Design_Document.docx.pdf">Senior Design II Final Design Document</a><br>
+  <a href="./assets/files/Final-presentation.pptx">Final Presentation</a><br>
+</div>
+
+  <script src="./js/index.js"></script>
+</body>
+</html>

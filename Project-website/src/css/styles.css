@@ -1,0 +1,90 @@
+
+*{
+  font-family: 'Nunito', sans-serif;
+  color: white;
+}
+
+h1, h2, h3 {
+  text-align: center;
+  font-weight: bold;
+  text-shadow: 7px 7px black;
+}
+
+hr{
+  border-width: 5px;
+  color: white;
+  background-color: white;
+  border-radius: 100px;
+}
+
+div{
+  margin-left: 2.5%;
+  margin-right: 2.5%;
+  padding-top: 1%;
+  padding-bottom: 1%;
+  font-size: 30px
+}
+
+p{
+  margin-top: 10px;
+}
+
+body  {
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+tr.spaceUnder>td {
+  padding-top: 1em;
+  padding-bottom: 1em;
+}
+
+table, th, td {
+  border: 2px solid white;
+}
+
+body
+
+a:hover {
+  color: gray;
+}
+
+#intro{
+  text-align: center;
+}
+
+#diagram{
+  margin-top: 50px;
+  margin-bottom: 100px;
+}
+
+#cvMap{
+  margin-bottom: 25px;
+}
+#images{
+  margin-bottom: 20px;
+}
+
+#team{
+  text-align: center;
+}
+
+.images{
+  text-align: center;
+  width: 480px;
+  height: 320px;
+  margin: 20px;
+}
+
+.floatLeft{
+  float:left;
+  padding-left: 50px;
+  padding-right: 50px;
+
+}
+
+.floatRight{
+  float: right;
+  padding-left: 50px;
+  padding-right: 50px;
+}

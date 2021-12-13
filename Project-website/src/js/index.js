@@ -1,0 +1,1 @@
+document.body.style.backgroundImage = "url('./assets/Sunrise.jpeg')"
